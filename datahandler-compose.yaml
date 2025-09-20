@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  specserver:
+    # Build using your custom Dockerfile name
+    build:
+      context: .
+      dockerfile: Dockerfile.datahandler
+    container_name: specserver
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_URL: database:5432
+      POSTGRES_USER: external
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: spectrometry
+      APP_PORT: 8901
+    depends_on:
+      - database
