@@ -4,8 +4,47 @@ import (
     "database/sql"
     "fmt"
     _ "github.com/lib/pq"
+    "encoding/json"
+    "datahandler/db"
     "os"
 )
+
+type MetaData struct {
+    APIKey   string          `json:"api_key"`
+    Content  json.RawMessage `json:"content"`
+}
+
+type GeneralData struct {
+    Name   string    `json:"name"`
+    Values []float64 `json:"values"`
+}
+
+type BME280Data struct {
+    Temperture float64 `json:"temperature"`
+    Pressure   float64 `json:"pressure"`
+    Humidity   float64 `json:"humidity"`
+}
+
+type BME688Data struct {
+    Temperture     float64 `json:"temperature"`
+    Pressure       float64 `json:"pressure"`
+    Humidity       float64 `json:"humidity"`
+    Gas_Resistance float64 `json:"gas_resistance"`
+}
+
+var gdStr = `
+    CREATE TABLE IF NOT EXISTS %s (
+        id SERIAL PRIMARY KEY,
+        datapoints REAL[],
+        timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+`
+
+var TypeMapping = map[string]func() interface{}{
+    "GeneralData": func() interface{} { return &GeneralData{} },
+    "BME280Data":  func() interface{} { return &BME280Data{} },
+    "BME688Data":  func() interface{} { return &BME688Data{} },
+}
 
 func ConnectDB() (*sql.DB, error) {
     dbURL := os.Getenv("POSTGRES_URL")
@@ -17,21 +56,34 @@ func ConnectDB() (*sql.DB, error) {
     return sql.Open("postgres", connStr)
 }
 
-type InsertConfig struct {
+type StandardMappingLogic struct {
     TableName       string
-    InsertFunc      func(db *sql.DB, table string, values []float64) error
+    DataType        string
+    InsertFunc      func(db *sql.DB, table string, data interface{}) error
     CreateIfMissing bool
+    TableString     *string
 }
 
-var InsertMethods = map[string]InsertConfig{
-    "EuCcPAP5QPnC4HJWc08u": {
-        TableName:      "esp32_athmos_spectro_001",
-        InsertFunc:     db.InsertSensorDataArray,
-        CreateNew:      false,
+var StandardMapping = map[string]StandardMappingLogic{
+    "64c1ecea-ba77-4271-acd9-7f06c6d1f004": {
+        TableName:          "sensor.esp8266_bme688_envsense_m001",
+        DataType:           "BME688Data",
+        InsertFunc:         db.InsertStandardData,
+        CreateIfMissing:    false,
+        TableString:        nil,
     },
-    "ImO4W0xrtN5mYp9QvjGq": {
-        TableName:      "sensor2_table",
-        InsertFunc:     db.InsertSensorDataArray,
-        CreateNew:      false,
+    "b012a270-b4f8-492c-b039-1bc7ef9f6000": {
+        TableName:          "sensor.esp8266_bme280_sws1",
+        DataType:           "BME280Data",
+        InsertFunc:         db.InsertStandardData,
+        CreateIfMissing:    false,
+        TableString:        nil,
+    },
+    "92e11fa8-395e-4408-90c5-6368b3de1096": {
+        TableName:          "%s_PLACEHOLDER",
+        DataType:           "GeneralData",
+        InsertFunc:         db.InsertStandardData,
+        CreateIfMissing:    true,
+        TableString:        &gdStr,
     },
 }

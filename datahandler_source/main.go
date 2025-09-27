@@ -15,11 +15,12 @@ func main() {
     }
     defer dbConn.Close()
 
-    http.HandleFunc("/receive", handlers.SensorHandler(dbConn))
+    http.HandleFunc("/datastream/sensor", handlers.StandardDataHandler(dbConn))
+    // http.HandleFunc("/api/fourier", handlers.StandardCalculationHandler(dbConn))
 
     port := os.Getenv("APP_PORT")
     if port == "" {
-        port = "8080" // fallback default
+        port = "8080"
     }
     addr := ":" + port
 

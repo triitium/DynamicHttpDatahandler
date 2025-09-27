@@ -1,47 +1,65 @@
 package db
 
 import (
+    "time"
     "database/sql"
     "fmt"
+    "reflect"
     "strings"
 )
 
-func CreateTable(db *sql.DB, tableName string) error {
-    query := fmt.Sprintf(`
-        CREATE TABLE IF NOT EXISTS %s (
-            id SERIAL PRIMARY KEY,
-            datapoints REAL[],
-            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-    `, tableName)
+func CreateTable(conn *sql.DB, tableName string, tableString *string) error {
+    now := time.Now()
+    tableName = fmt.Sprintf(tableName, now.Format("2006_01_02_15_04_05"))
+    query := fmt.Sprintf(*tableString, tableName)
 
-    _, err := db.Exec(query)
+    _, err := conn.Exec(query)
     if err != nil {
         return fmt.Errorf("failed to create table %s: %w", tableName, err)
     }
     return nil
 }
 
-// Insert a single row into a table
-func InsertSensorData(db *sql.DB, table string, values []float64) error {
-    // Build query dynamically
+func InsertStandardData(conn *sql.DB, table string, data interface{}) error {
+    v := reflect.ValueOf(data)
+    if v.Kind() != reflect.Struct {
+        return fmt.Errorf("data must be a struct")
+    }
+
     cols := []string{}
     placeholders := []string{}
     args := []interface{}{}
-    for i, v := range values {
-        colName := fmt.Sprintf("val%d", i+1)
+
+    for i := 0; i < v.NumField(); i++ {
+        field := v.Type().Field(i)
+        value := v.Field(i).Interface()
+
+        colName := field.Tag.Get("conn")
+        if colName == "" {
+            colName = strings.ToLower(field.Name)
+        }
+
         cols = append(cols, colName)
-        placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
-        args = append(args, v)
+        placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)+1))
+        args = append(args, value)
     }
 
-    query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(cols, ","), strings.Join(placeholders, ","))
-    _, err := db.Exec(query, args...)
+    if len(cols) == 0 {
+        return fmt.Errorf("no columns to insert")
+    }
+
+    query := fmt.Sprintf(
+        "INSERT INTO %s (%s) VALUES (%s)",
+        table,
+        strings.Join(cols, ","),
+        strings.Join(placeholders, ","),
+    )
+
+    _, err := conn.Exec(query, args...)
     return err
 }
 
-func InsertSensorDataArray(db *sql.DB, table string, values []float64) error {
-    // Convert []float64 to PostgreSQL array literal
+func InsertSensorDataArray(conn *sql.DB, table string, values []float64) error {
     arrayLiteral := "{"
     for i, v := range values {
         if i > 0 {
@@ -51,8 +69,7 @@ func InsertSensorDataArray(db *sql.DB, table string, values []float64) error {
     }
     arrayLiteral += "}"
 
-    // Build and execute query
     query := fmt.Sprintf("INSERT INTO %s (datapoints) VALUES ($1)", table)
-    _, err := db.Exec(query, arrayLiteral)
+    _, err := conn.Exec(query, arrayLiteral)
     return err
 }
