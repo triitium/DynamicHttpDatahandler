@@ -1,11 +1,11 @@
 version: "3.9"
 
 services:
-  specserver:
+  datahandler:
     build:
       context: .
       dockerfile: datahandler.Dockerfile
-    container_name: specserver
+    container_name: api_datahandling_server
     ports:
       - "9876:9876"
     environment:

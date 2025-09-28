@@ -18,6 +18,6 @@ WORKDIR /interface
 
 COPY --from=build /src/datahandler .
 
-EXPOSE 8901
+EXPOSE 9876
 
 ENTRYPOINT ["./datahandler"]
