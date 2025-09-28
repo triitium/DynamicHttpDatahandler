@@ -20,13 +20,13 @@ type GeneralData struct {
 }
 
 type BME280Data struct {
-    Temperture float64 `json:"temperature"`
+    Temperature float64 `json:"temperature"`
     Pressure   float64 `json:"pressure"`
     Humidity   float64 `json:"humidity"`
 }
 
 type BME688Data struct {
-    Temperture     float64 `json:"temperature"`
+    Temperature     float64 `json:"temperature"`
     Pressure       float64 `json:"pressure"`
     Humidity       float64 `json:"humidity"`
     Gas_Resistance float64 `json:"gas_resistance"`

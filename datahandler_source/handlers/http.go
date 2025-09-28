@@ -8,6 +8,7 @@ import (
     "database/sql"
     "encoding/json"
     "net/http"
+    "reflect"
 )
 
 func StandardDataHandler(conn *sql.DB) http.HandlerFunc {
@@ -46,7 +47,12 @@ func StandardDataHandler(conn *sql.DB) http.HandlerFunc {
             }
         }
 
-        if err := cfg.InsertFunc(conn, cfg.TableName, data); err != nil {
+        val := reflect.ValueOf(data)
+        if val.Kind() == reflect.Ptr {
+            val = val.Elem()
+        }
+
+        if err := cfg.InsertFunc(conn, cfg.TableName, val.Interface()); err != nil {
             http.Error(w, "db insert Failed: "+err.Error(), http.StatusInternalServerError)
             return
         }
